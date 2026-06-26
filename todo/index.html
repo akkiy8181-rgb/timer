@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>そうまのやることリスト 2026/06/24</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap');
+  :root { --yellow:#fbbf24; --orange:#f97316; --border:#e2e8f0; --subtext:#64748b; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'M PLUS Rounded 1c',sans-serif; background:#f8fafc; color:#1e293b; padding:12px; max-width:480px; margin:0 auto; }
+
+  .header { background:linear-gradient(135deg,#3b82f6,#8b5cf6); border-radius:14px; padding:10px 14px; margin-bottom:8px; color:white; display:flex; align-items:center; gap:10px; }
+  .header-text { flex:1; }
+  .header-date { font-size:10px; opacity:.85; }
+  .header-title { font-size:17px; font-weight:800; }
+  .header-memo { font-size:10px; background:rgba(255,255,255,.2); border-radius:6px; padding:3px 8px; margin-top:3px; display:inline-block; }
+  .header-icon { font-size:36px; opacity:.25; }
+
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px; }
+  .grid-full { grid-column:1/-1; }
+  .section-label { font-size:9px; font-weight:800; letter-spacing:.1em; color:var(--subtext); text-transform:uppercase; margin:6px 0 2px 2px; grid-column:1/-1; }
+
+  .task { background:white; border-radius:10px; padding:8px 10px; display:flex; align-items:center; gap:7px; border:1.5px solid var(--border); box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  .task.highlight { border-color:var(--yellow); background:#fffbeb; }
+  .task.required  { border-color:var(--orange); }
+  .task.challenge { border-color:#a78bfa; background:#f5f3ff; }
+  .checkbox { width:22px; height:22px; border-radius:6px; border:2px solid var(--border); flex-shrink:0; background:white; }
+  .task-icon { font-size:15px; flex-shrink:0; width:18px; text-align:center; }
+  .task-body { flex:1; min-width:0; }
+  .task-name { font-size:11px; font-weight:700; line-height:1.3; }
+  .task-sub  { font-size:9px; color:var(--subtext); margin-top:1px; }
+  .reward { flex-shrink:0; }
+  .reward-star { font-size:9px; font-weight:800; color:#b45309; background:#fef3c7; border-radius:12px; padding:2px 5px; white-space:nowrap; border:1px solid var(--yellow); }
+  .reward-none { font-size:9px; color:#cbd5e1; }
+  .reward-challenge { font-size:9px; font-weight:800; color:#6d28d9; background:#ede9fe; border-radius:12px; padding:2px 5px; white-space:nowrap; border:1px solid #a78bfa; }
+
+  .milestone { background:linear-gradient(135deg,#fbbf24,#f97316); border-radius:10px; padding:8px 10px; display:flex; align-items:center; gap:7px; color:white; box-shadow:0 2px 6px rgba(251,191,36,.3); }
+  .milestone .checkbox { border-color:rgba(255,255,255,.6); background:rgba(255,255,255,.25); }
+  .milestone .task-name { color:white; font-size:12px; }
+  .milestone .reward-star { background:rgba(255,255,255,.25); border-color:rgba(255,255,255,.5); color:white; }
+
+  .bottom { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px; }
+  .summary { background:linear-gradient(135deg,#1e293b,#334155); color:white; border-radius:12px; padding:10px 12px; }
+  .summary-title { font-size:10px; font-weight:800; opacity:.8; margin-bottom:6px; }
+  .summary-row { display:flex; justify-content:space-between; font-size:10px; padding:2px 0; border-bottom:1px solid rgba(255,255,255,.08); }
+  .summary-row:last-of-type { border:none; }
+  .summary-total { display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding-top:6px; border-top:1.5px solid rgba(255,255,255,.2); }
+  .summary-total-label { font-size:11px; font-weight:800; }
+  .summary-total-val { font-size:18px; font-weight:800; color:var(--yellow); }
+  .notes { background:#f0fdf4; border:1.5px solid #86efac; border-radius:12px; padding:10px 12px; }
+  .notes-title { font-size:10px; font-weight:800; color:#16a34a; margin-bottom:6px; }
+  .notes p { font-size:10px; color:#15803d; line-height:1.6; margin-bottom:4px; }
+  .notes p:last-child { margin-bottom:0; }
+
+  .due-badge { font-size:9px; font-weight:800; color:#dc2626; background:#fee2e2; border-radius:10px; padding:2px 6px; white-space:nowrap; border:1px solid #fca5a5; }
+
+  @media print {
+    @page { size:B5; margin:10mm; }
+    * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+    body { background:white; padding:0; max-width:100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-text">
+    <div class="header-date">📅 2026年6月24日（水）　塾あり</div>
+    <div class="header-title">⭐ そうまのやることリスト</div>
+    <div class="header-memo">🗓️ 7/1(水)提出！ S2クラス＋S1チャレンジ</div>
+  </div>
+  <div class="header-icon">🎯</div>
+</div>
+
+<div class="grid">
+
+  <!-- 国語 -->
+  <div class="section-label">✏️ 国語</div>
+
+  <div class="task required">
+    <div class="checkbox"></div>
+    <div class="task-icon">✏️</div>
+    <div class="task-body">
+      <div class="task-name">STEP 文法</div>
+      <div class="task-sub">p188,189（ノートに取り組む）</div>
+    </div>
+    <div class="reward"><div class="reward-star">⭐10分券</div></div>
+  </div>
+
+  <div class="task required">
+    <div class="checkbox"></div>
+    <div class="task-icon">漢</div>
+    <div class="task-body">
+      <div class="task-name">漢字 第16回</div>
+      <div class="task-sub">しっかり練習！</div>
+    </div>
+    <div class="reward"><div class="reward-star">⭐10分券</div></div>
+  </div>
+
+  <div class="task highlight grid-full">
+    <div class="task-icon">✏️</div>
+    <div class="task-body">
+      <div class="task-name">国語 日々プリ 第16回 ５枚</div>
+      <div class="task-sub">書き込み。ウィークリーテスト対策にもなるよ！</div>
+    </div>
+    <div style="display:flex; gap:4px; align-items:center; flex-shrink:0;">
+      <div style="display:flex; flex-direction:column; align-items:center; gap:2px;"><div class="checkbox"></div><span style="font-size:8px; color:#64748b; font-weight:700;">１</span></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:2px;"><div class="checkbox"></div><span style="font-size:8px; color:#64748b; font-weight:700;">２</span></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:2px;"><div class="checkbox"></div><span style="font-size:8px; color:#64748b; font-weight:700;">３</span></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:2px;"><div class="checkbox"></div><span style="font-size:8px; color:#64748b; font-weight:700;">４</span></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:2px;"><div class="checkbox"></div><span style="font-size:8px; color:#64748b; font-weight:700;">５</span></div>
+    </div>
+  </div>
+
+  <!-- セット達成 -->
+  <div class="milestone grid-full">
+    <div class="checkbox"></div>
+    <div class="task-icon">🏆</div>
+    <div class="task-body">
+      <div class="task-name">国語コンプリート！文法＋漢字＋日々プリ全部終わった！</div>
+    </div>
+    <div class="reward"><div class="reward-star">⭐ボーナス10分</div></div>
+  </div>
+
+  <!-- 算数 -->
+  <div class="section-label">🔢 算数</div>
+
+  <div class="task required">
+    <div class="checkbox"></div>
+    <div class="task-icon">🔢</div>
+    <div class="task-body">
+      <div class="task-name">STEP Kステージ</div>
+      <div class="task-sub">p124（ノートに取り組む）</div>
+    </div>
+    <div class="reward"><div class="reward-star">⭐10分券</div></div>
+  </div>
+
+  <div class="task required">
+    <div class="checkbox"></div>
+    <div class="task-icon">🔢</div>
+    <div class="task-body">
+      <div class="task-name">STEP Aステージプラス</div>
+      <div class="task-sub">p130（ノートに取り組む）</div>
+    </div>
+    <div class="reward"><div class="reward-star">⭐10分券</div></div>
+  </div>
+
+  <div class="task highlight grid-full">
+    <div class="task-icon">🔢</div>
+    <div class="task-body">
+      <div class="task-name">算数 日々プリ ５枚（書き込み）</div>
+      <div class="task-sub">算数の日々プリ。しっかり取り組もう！</div>
+    </div>
+    <div style="display:flex; gap:4px; align-items:center; flex-shrink:0;">
+      <div style="display:flex; flex-direction:column; align-items:center; gap:2px;"><div class="checkbox"></div><span style="font-size:8px; color:#64748b; font-weight:700;">１</span></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:2px;"><div class="checkbox"></div><span style="font-size:8px; color:#64748b; font-weight:700;">２</span></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:2px;"><div class="checkbox"></div><span style="font-size:8px; color:#64748b; font-weight:700;">３</span></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:2px;"><div class="checkbox"></div><span style="font-size:8px; color:#64748b; font-weight:700;">４</span></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:2px;"><div class="checkbox"></div><span style="font-size:8px; color:#64748b; font-weight:700;">５</span></div>
+    </div>
+  </div>
+
+  <!-- S1チャレンジ -->
+  <div class="section-label">💜 算数 S1チャレンジ</div>
+
+  <div class="task challenge grid-full">
+    <div class="checkbox"></div>
+    <div class="task-icon">🔢</div>
+    <div class="task-body">
+      <div class="task-name">STEP Bステージプラス</div>
+      <div class="task-sub">p131（ノートに取り組む）できたらすごい！</div>
+    </div>
+    <div class="reward"><div class="reward-challenge">💜チャレンジ</div></div>
+  </div>
+
+  <!-- チャレンジ達成 -->
+  <div class="milestone grid-full" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);">
+    <div class="checkbox"></div>
+    <div class="task-icon">🚀</div>
+    <div class="task-body">
+      <div class="task-name">S1 Bプラスクリア！すごすぎる！！</div>
+    </div>
+    <div class="reward"><div class="reward-star">⭐ボーナス20分</div></div>
+  </div>
+
+  <!-- 提出リマインダー -->
+  <div class="task grid-full" style="border-color:#dc2626; background:#fff5f5;">
+    <div class="checkbox"></div>
+    <div class="task-icon">📋</div>
+    <div class="task-body">
+      <div class="task-name">提出チェック</div>
+      <div class="task-sub">全部〇付け＆やり直しまで完了！</div>
+    </div>
+    <div class="reward"><div class="due-badge">7/1(水)提出</div></div>
+  </div>
+
+</div>
+
+<!-- ごほうびまとめ + ポイント -->
+<div class="bottom">
+  <div class="summary">
+    <div class="summary-title">⭐ ごほうびまとめ</div>
+    <div class="summary-row"><span>✏️ 国語STEP文法</span><span>10分</span></div>
+    <div class="summary-row"><span>漢 漢字第16回</span><span>10分</span></div>
+    <div class="summary-row"><span>✏️ 国語日々プリ×5</span><span>15分</span></div>
+    <div class="summary-row"><span>🏆 国語コンプリート</span><span>10分</span></div>
+    <div class="summary-row"><span>🔢 算数Kステージ</span><span>10分</span></div>
+    <div class="summary-row"><span>🔢 算数Aプラス</span><span>10分</span></div>
+    <div class="summary-row"><span>🔢 算数日々プリ×5</span><span>15分</span></div>
+    <div class="summary-row"><span>🚀 S1Bプラスチャレンジ</span><span>20分</span></div>
+    <div class="summary-total">
+      <div class="summary-total-label">🎮 最大合計</div>
+      <div class="summary-total-val">100分！</div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="notes-title">💡 ポイント</div>
+    <p>📌 提出は7/1(水)！</p>
+    <p>✅ 〇付け＆やり直しまでやって完成！</p>
+    <p>💜 S1算数はチャレンジ！できなくてもOK、やってみよう！</p>
+    <p>📖 日々プリはテスト対策にもなるよ！</p>
+  </div>
+</div>
+
+</body>
+</html>
