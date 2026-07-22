@@ -3,6 +3,20 @@
 /* ===================== Storage ===================== */
 const DAYS_KEY = 'kanjiApp.days';
 const STATS_KEY = 'kanjiApp.stats';
+const LENIENCY_KEY = 'kanjiApp.leniency';
+
+const LENIENCY_THRESHOLDS = { mild: 30, normal: 50, spicy: 65 };
+
+function loadLeniency() {
+  const v = localStorage.getItem(LENIENCY_KEY);
+  return LENIENCY_THRESHOLDS.hasOwnProperty(v) ? v : 'normal';
+}
+function saveLeniency(v) {
+  localStorage.setItem(LENIENCY_KEY, v);
+}
+function getPassThreshold() {
+  return LENIENCY_THRESHOLDS[leniency];
+}
 
 function loadDays() {
   try {
@@ -30,6 +44,7 @@ function uid() {
 
 let days = loadDays();
 let stats = loadStats();
+let leniency = loadLeniency();
 
 /* ===================== Screen switching ===================== */
 function showScreen(id) {
@@ -39,7 +54,14 @@ function showScreen(id) {
 }
 
 /* ===================== Home screen ===================== */
+function renderSpiceButtons() {
+  document.querySelectorAll('.spice-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.level === leniency);
+  });
+}
+
 function renderHome() {
+  renderSpiceButtons();
   const listEl = document.getElementById('day-list');
   if (days.length === 0) {
     listEl.innerHTML = '<div class="empty-msg">まだ漢字が登録されていません。「＋ 新しい日を追加する」から始めよう！</div>';
@@ -154,19 +176,42 @@ function setInputMode(mode) {
   }
 }
 
+const HIRAGANA_ONLY_RE = /^[ぁ-んー]+$/;
+
+// 「漢字,よみ,漢字,よみ,...」のように改行なしで交互に並んだ形式かどうかを判定する
+function looksLikeAlternatingPairs(cols) {
+  if (cols.length < 4 || cols.length % 2 !== 0) return false;
+  for (let i = 1; i < cols.length; i += 2) {
+    if (cols[i] && !HIRAGANA_ONLY_RE.test(cols[i])) return false;
+  }
+  return true;
+}
+
 function parseLine(line) {
-  let raw = line.trim();
-  if (!raw) return null;
-  const cols = raw.includes('\t') ? raw.split('\t') : raw.split(',');
-  const kanji = (cols[0] || '').trim();
-  if (!kanji) return null;
-  const reading = (cols[1] || '').trim();
+  const raw = line.trim();
+  if (!raw) return [];
+  const cols = (raw.includes('\t') ? raw.split('\t') : raw.split(','))
+    .map(c => c.trim());
+
+  if (looksLikeAlternatingPairs(cols)) {
+    const items = [];
+    for (let i = 0; i < cols.length; i += 2) {
+      const kanji = cols[i];
+      if (!kanji) continue;
+      items.push({ id: uid(), kanji, reading: cols[i + 1] || '', meaning: '' });
+    }
+    return items;
+  }
+
+  const kanji = cols[0] || '';
+  if (!kanji) return [];
+  const reading = cols[1] || '';
   const meaning = cols.slice(2).join(',').trim();
-  return { id: uid(), kanji, reading, meaning };
+  return [{ id: uid(), kanji, reading, meaning }];
 }
 
 function parseBulk(text) {
-  return text.split('\n').map(parseLine).filter(Boolean);
+  return text.split('\n').flatMap(parseLine);
 }
 
 function renderPendingList() {
@@ -178,11 +223,12 @@ function renderPendingList() {
   }
   wrap.innerHTML = pendingItems.map((it, i) => {
     const sub = [it.reading, it.meaning].filter(Boolean).join(' / ');
+    const suspicious = it.kanji.length > 4 || it.reading.length > 12 || it.meaning.length > 20;
     return `
-      <div class="pending-item" data-index="${i}">
+      <div class="pending-item${suspicious ? ' pi-suspicious' : ''}" data-index="${i}">
         <div class="pi-main">
           <span class="pi-kanji">${escapeHtml(it.kanji)}</span>
-          <span class="pi-sub">${escapeHtml(sub)}</span>
+          <span class="pi-sub">${suspicious ? '⚠ ' : ''}${escapeHtml(sub)}</span>
         </div>
         <button class="pi-remove" data-index="${i}">✕</button>
       </div>
@@ -545,15 +591,13 @@ function scoreBox(rect) {
   return Math.round(f1 * 100);
 }
 
-const PASS_THRESHOLD = 60;
-
 function judgeQuestion() {
   if (judged) return;
   judged = true;
 
   const scores = boxRects.map(scoreBox);
   const overall = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-  const correct = overall >= PASS_THRESHOLD;
+  const correct = overall >= getPassThreshold();
 
   const item = currentItem();
   quizResults[quizIndex] = { score: overall, correct };
@@ -593,6 +637,21 @@ function nextQuestion() {
   } else {
     renderQuestion();
   }
+}
+
+function endQuizEarly() {
+  const answeredCount = judged ? quizIndex + 1 : quizIndex;
+  if (answeredCount === 0) {
+    if (confirm('まだ1問も答えていません。テストをやめてホームに戻りますか？')) {
+      renderHome();
+      showScreen('screen-home');
+    }
+    return;
+  }
+  if (!confirm(`ここまで（${answeredCount}問）で終了して結果を見ますか？`)) return;
+  quizQueue = quizQueue.slice(0, answeredCount);
+  quizResults = quizResults.slice(0, answeredCount);
+  finishQuiz();
 }
 
 function finishQuiz() {
@@ -636,6 +695,11 @@ function retryWrongOnly() {
 
 /* ===================== Event wiring ===================== */
 function setupEventListeners() {
+  document.getElementById('home-title-btn').addEventListener('click', () => {
+    renderHome();
+    showScreen('screen-home');
+  });
+
   document.getElementById('quick-random-btn').addEventListener('click', () => {
     const items = allItems();
     if (items.length === 0) {
@@ -647,6 +711,14 @@ function setupEventListeners() {
   document.getElementById('goto-setup-btn').addEventListener('click', openQuizSetup);
   document.getElementById('weak-quiz-btn').addEventListener('click', startWeakQuiz);
   document.getElementById('add-day-btn').addEventListener('click', () => openAddDay(null));
+
+  document.querySelectorAll('.spice-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      leniency = btn.dataset.level;
+      saveLeniency(leniency);
+      renderSpiceButtons();
+    });
+  });
 
   document.getElementById('mode-single-btn').addEventListener('click', () => setInputMode('single'));
   document.getElementById('mode-bulk-btn').addEventListener('click', () => setInputMode('bulk'));
@@ -695,6 +767,7 @@ function setupEventListeners() {
   document.getElementById('judge-btn').addEventListener('click', judgeQuestion);
   document.getElementById('retry-question-btn').addEventListener('click', retryQuestion);
   document.getElementById('next-question-btn').addEventListener('click', nextQuestion);
+  document.getElementById('end-quiz-btn').addEventListener('click', endQuizEarly);
 
   document.getElementById('retry-wrong-btn').addEventListener('click', retryWrongOnly);
   document.getElementById('result-home-btn').addEventListener('click', () => {

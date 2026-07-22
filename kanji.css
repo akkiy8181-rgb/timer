@@ -55,22 +55,23 @@ body {
   gap: 0.5rem;
 }
 
-.app-header h1 {
+.app-title-btn {
+  background: none;
+  border: none;
+  color: var(--text-main);
+  font-family: inherit;
   font-size: 1.3rem;
+  font-weight: 700;
   letter-spacing: 1px;
+  cursor: pointer;
+  padding: 0.3rem 0.4rem;
+  margin: -0.3rem -0.4rem;
+  border-radius: 10px;
 }
 
-.link-btn {
+.app-title-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
   color: var(--accent);
-  text-decoration: none;
-  font-size: 0.85rem;
-  border: 1px solid var(--accent);
-  padding: 0.3rem 0.8rem;
-  border-radius: 99px;
-}
-
-.link-btn:hover {
-  background: rgba(0, 242, 254, 0.15);
 }
 
 .screen {
@@ -169,6 +170,47 @@ body {
 
 .quick-actions .big-btn {
   flex: 1;
+}
+
+.spice-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.spice-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.spice-buttons {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.spice-btn {
+  background: var(--btn-bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.8rem;
+  border-radius: 99px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.spice-btn:hover {
+  background: var(--btn-hover);
+}
+
+.spice-btn.active {
+  background: rgba(255, 159, 28, 0.2);
+  border-color: var(--accent-2);
+  color: var(--accent-2);
 }
 
 .weak-card {
@@ -318,6 +360,15 @@ body {
   padding: 0.4rem 0.7rem;
 }
 
+.pending-item.pi-suspicious {
+  background: rgba(255, 159, 28, 0.12);
+  border: 1px solid rgba(255, 159, 28, 0.4);
+}
+
+.pending-item.pi-suspicious .pi-sub {
+  color: var(--accent-2);
+}
+
 .pending-item .pi-main {
   display: flex;
   align-items: baseline;
@@ -390,11 +441,25 @@ select.text-input {
 }
 
 /* Quiz screen */
+.quiz-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 0.6rem;
+}
+
 .quiz-progress {
   text-align: center;
   color: var(--text-muted);
   font-weight: 700;
-  margin-bottom: 0.6rem;
+}
+
+.quiz-end-btn {
+  position: absolute;
+  right: 0;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8rem;
 }
 
 .quiz-prompt {
