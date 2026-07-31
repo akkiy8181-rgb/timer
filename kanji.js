@@ -5,7 +5,7 @@ const DAYS_KEY = 'kanjiApp.days';
 const STATS_KEY = 'kanjiApp.stats';
 const LENIENCY_KEY = 'kanjiApp.leniency';
 
-const LENIENCY_THRESHOLDS = { mild: 30, normal: 50, spicy: 65 };
+const LENIENCY_THRESHOLDS = { mild: 28, normal: 45, spicy: 60 };
 
 function loadLeniency() {
   const v = localStorage.getItem(LENIENCY_KEY);
@@ -583,7 +583,7 @@ function getPos(e) {
 let lastPos = null;
 function beginStroke(pos) {
   lastPos = pos;
-  const lw = Math.max(6, (boxRects[0] ? boxRects[0].w : 120) * 0.06);
+  const lw = Math.max(10, (boxRects[0] ? boxRects[0].w : 120) * 0.11);
   [visCtx, inkCtx].forEach(ctx => {
     ctx.lineWidth = lw;
     ctx.lineCap = 'round';
@@ -622,7 +622,7 @@ function scoreBox(rect) {
   refCtx.textBaseline = 'middle';
   // 採点用の正解の形は、実際のペンの太さに近づけて少し太らせる（細い明朝体のままだと
   // 正確になぞっても線がはみ出したと判定され減点されてしまうため）。
-  const refBoldness = Math.max(3, Math.round(h * 0.035));
+  const refBoldness = Math.max(4, Math.round(h * 0.05));
   fillTextBold(refCtx, rect.char, w / 2, h / 2 + h * 0.05, refBoldness);
   const refData = refCtx.getImageData(0, 0, w, h).data;
 
@@ -672,7 +672,11 @@ function scoreBox(rect) {
   const inkCoverage = totalCells > 0 ? inkCount / totalCells : 0;
   const coveragePenalty = inkCoverage <= 0.5 ? 1 : Math.max(0, 1 - (inkCoverage - 0.5) / 0.35);
 
-  return Math.round(f1 * coveragePenalty * 100);
+  // 手書きは多少ずれても形が合っていれば甘めに評価する（判定をマイルドにする補正カーブ）。
+  // 指数0.7で中間帯を持ち上げる: 例) 0.36→0.49, 0.5→0.62, 0.7→0.78。
+  const raw = f1 * coveragePenalty;
+  const eased = Math.pow(raw, 0.7);
+  return Math.round(eased * 100);
 }
 
 function judgeQuestion() {
