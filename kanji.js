@@ -1,175 +1,871 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>かんじ手書きチェッカー</title>
-  <link rel="stylesheet" href="kanji.css">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@500;700;900&display=swap" rel="stylesheet">
-</head>
-<body>
-  <div class="app-container">
-    <div class="glass-panel">
+'use strict';
 
-      <header class="app-header">
-        <button id="home-title-btn" class="app-title-btn">📝 かんじ手書きチェッカー</button>
-      </header>
+/* ===================== Storage ===================== */
+const DAYS_KEY = 'kanjiApp.days';
+const STATS_KEY = 'kanjiApp.stats';
+const LENIENCY_KEY = 'kanjiApp.leniency';
 
-      <!-- ホーム画面 -->
-      <section id="screen-home" class="screen active">
-        <div class="quick-actions">
-          <button id="quick-random-btn" class="big-btn primary">🎲 ランダムテスト</button>
-          <button id="goto-setup-btn" class="big-btn secondary">🧪 日を選んでテスト</button>
-        </div>
+const LENIENCY_THRESHOLDS = { mild: 30, normal: 50, spicy: 65 };
 
-        <div class="spice-row">
-          <span class="spice-label">判定のきびしさ</span>
-          <div class="spice-buttons" id="spice-buttons">
-            <button class="spice-btn" data-level="mild">🍮 甘口</button>
-            <button class="spice-btn" data-level="normal">🌶 中辛</button>
-            <button class="spice-btn" data-level="spicy">🔥 辛口</button>
+function loadLeniency() {
+  const v = localStorage.getItem(LENIENCY_KEY);
+  return LENIENCY_THRESHOLDS.hasOwnProperty(v) ? v : 'normal';
+}
+function saveLeniency(v) {
+  localStorage.setItem(LENIENCY_KEY, v);
+}
+function getPassThreshold() {
+  return LENIENCY_THRESHOLDS[leniency];
+}
+
+function loadDays() {
+  try {
+    return JSON.parse(localStorage.getItem(DAYS_KEY)) || [];
+  } catch (e) {
+    return [];
+  }
+}
+function saveDays(days) {
+  localStorage.setItem(DAYS_KEY, JSON.stringify(days));
+}
+function loadStats() {
+  try {
+    return JSON.parse(localStorage.getItem(STATS_KEY)) || {};
+  } catch (e) {
+    return {};
+  }
+}
+function saveStats(stats) {
+  localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+}
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+let days = loadDays();
+let stats = loadStats();
+let leniency = loadLeniency();
+
+/* ===================== Screen switching ===================== */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+/* ===================== Home screen ===================== */
+function renderSpiceButtons() {
+  document.querySelectorAll('.spice-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.level === leniency);
+  });
+}
+
+function renderHome() {
+  renderSpiceButtons();
+  const listEl = document.getElementById('day-list');
+  if (days.length === 0) {
+    listEl.innerHTML = '<div class="empty-msg">まだ漢字が登録されていません。「＋ 新しい日を追加する」から始めよう！</div>';
+  } else {
+    listEl.innerHTML = days.map(day => {
+      const date = new Date(day.createdAt);
+      const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
+      return `
+        <div class="day-card" data-day-id="${day.id}">
+          <div class="day-card-top">
+            <div class="day-card-label">${escapeHtml(day.label)}</div>
+            <div class="day-card-meta">${day.items.length}文字・${dateStr}</div>
+          </div>
+          <div class="day-card-actions">
+            <button class="small-btn day-test-btn">テストする</button>
+            <button class="small-btn day-edit-btn">編集</button>
+            <button class="small-btn day-delete-btn">削除</button>
           </div>
         </div>
+      `;
+    }).join('');
 
-        <div id="weak-card" class="weak-card hidden">
-          <div class="weak-card-text">
-            にがてな漢字が <span id="weak-count">0</span> こあります
-          </div>
-          <button id="weak-quiz-btn" class="small-btn">にがてを練習する</button>
+    listEl.querySelectorAll('.day-test-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const dayId = e.target.closest('.day-card').dataset.dayId;
+        openQuizSetup(dayId);
+      });
+    });
+    listEl.querySelectorAll('.day-edit-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const dayId = e.target.closest('.day-card').dataset.dayId;
+        openAddDay(dayId);
+      });
+    });
+    listEl.querySelectorAll('.day-delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const dayId = e.target.closest('.day-card').dataset.dayId;
+        const day = days.find(d => d.id === dayId);
+        if (confirm(`「${day.label}」を削除しますか？`)) {
+          days = days.filter(d => d.id !== dayId);
+          saveDays(days);
+          renderHome();
+        }
+      });
+    });
+  }
+
+  const weakList = computeWeakList();
+  const weakCard = document.getElementById('weak-card');
+  if (weakList.length > 0) {
+    weakCard.classList.remove('hidden');
+    document.getElementById('weak-count').textContent = weakList.length;
+  } else {
+    weakCard.classList.add('hidden');
+  }
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function allItems() {
+  const items = [];
+  days.forEach(day => {
+    day.items.forEach(it => items.push({ ...it, dayLabel: day.label }));
+  });
+  return items;
+}
+
+/* ===================== Add / Edit day screen ===================== */
+let pendingItems = [];
+let editingDayId = null;
+
+function openAddDay(dayId) {
+  editingDayId = dayId || null;
+  const day = dayId ? days.find(d => d.id === dayId) : null;
+
+  document.getElementById('add-day-title').textContent = day ? '日を編集' : '新しい日を追加';
+  document.getElementById('day-label-input').value = day ? day.label : `${days.length + 1}日目`;
+
+  pendingItems = day ? day.items.map(it => ({ ...it })) : [];
+  renderPendingList();
+
+  document.getElementById('single-kanji-input').value = '';
+  document.getElementById('single-reading-input').value = '';
+  document.getElementById('single-meaning-input').value = '';
+  document.getElementById('day-bulk-input').value = '';
+
+  setInputMode('single');
+  showScreen('screen-add-day');
+  document.getElementById('single-kanji-input').focus();
+}
+
+function setInputMode(mode) {
+  const singleArea = document.getElementById('single-input-area');
+  const bulkArea = document.getElementById('bulk-input-area');
+  const singleBtn = document.getElementById('mode-single-btn');
+  const bulkBtn = document.getElementById('mode-bulk-btn');
+  if (mode === 'single') {
+    singleArea.classList.remove('hidden');
+    bulkArea.classList.add('hidden');
+    singleBtn.classList.add('active');
+    bulkBtn.classList.remove('active');
+  } else {
+    singleArea.classList.add('hidden');
+    bulkArea.classList.remove('hidden');
+    singleBtn.classList.remove('active');
+    bulkBtn.classList.add('active');
+  }
+}
+
+const HIRAGANA_ONLY_RE = /^[ぁ-んー]+$/;
+
+/* ===================== 読み方の自動推定 ===================== */
+// KANJI_READINGS は kanji-readings-data.js で定義される（常用漢字2136字の代表的な音読み・訓読み）。
+function isKanjiChar(ch) {
+  const c = ch.codePointAt(0);
+  return (c >= 0x4e00 && c <= 0x9fff) || (c >= 0x3400 && c <= 0x4dbf);
+}
+
+// 熟語なら音読みをつなげ、送りがな付き単漢字なら訓読み+送りがなで読みを推定する。
+// 辞書にない字がある場合はnullを返す（推定不可）。100%正確ではないため、あくまで下書きとして扱う。
+function guessReading(word) {
+  if (typeof KANJI_READINGS === 'undefined') return null;
+  const chars = Array.from(word);
+  let splitIdx = chars.length;
+  for (let i = 0; i < chars.length; i++) {
+    if (!isKanjiChar(chars[i])) { splitIdx = i; break; }
+  }
+  const kanjiPart = chars.slice(0, splitIdx);
+  const trailingKana = chars.slice(splitIdx).join('');
+  if (kanjiPart.length === 0) return null;
+
+  if (trailingKana) {
+    let prefix = '';
+    for (let i = 0; i < kanjiPart.length - 1; i++) {
+      const e = KANJI_READINGS[kanjiPart[i]];
+      if (!e) return null;
+      prefix += e[0] || e[1] || '';
+    }
+    const last = KANJI_READINGS[kanjiPart[kanjiPart.length - 1]];
+    if (!last) return null;
+    return prefix + (last[1] || last[0] || '') + trailingKana;
+  }
+
+  if (kanjiPart.length === 1) {
+    const e = KANJI_READINGS[kanjiPart[0]];
+    if (!e) return null;
+    return e[1] || e[0] || '';
+  }
+
+  let out = '';
+  for (const c of kanjiPart) {
+    const e = KANJI_READINGS[c];
+    if (!e) return null;
+    out += e[0] || e[1] || '';
+  }
+  return out;
+}
+
+// 「漢字,よみ,漢字,よみ,...」のように改行なしで交互に並んだ形式かどうかを判定する
+function looksLikeAlternatingPairs(cols) {
+  if (cols.length < 4 || cols.length % 2 !== 0) return false;
+  for (let i = 1; i < cols.length; i += 2) {
+    if (cols[i] && !HIRAGANA_ONLY_RE.test(cols[i])) return false;
+  }
+  return true;
+}
+
+// 読みが空欄の場合は自動推定した読みで埋め、guessedフラグを立てて後で見分けられるようにする
+function buildItem(kanji, reading, meaning) {
+  let guessed = false;
+  if (!reading) {
+    const g = guessReading(kanji);
+    if (g) {
+      reading = g;
+      guessed = true;
+    }
+  }
+  return { id: uid(), kanji, reading: reading || '', meaning: meaning || '', guessed };
+}
+
+function parseLine(line) {
+  const raw = line.trim();
+  if (!raw) return [];
+  const cols = (raw.includes('\t') ? raw.split('\t') : raw.split(/[,、，]/))
+    .map(c => c.trim());
+
+  if (looksLikeAlternatingPairs(cols)) {
+    const items = [];
+    for (let i = 0; i < cols.length; i += 2) {
+      const kanji = cols[i];
+      if (!kanji) continue;
+      items.push(buildItem(kanji, cols[i + 1] || '', ''));
+    }
+    return items;
+  }
+
+  const kanji = cols[0] || '';
+  if (!kanji) return [];
+  const reading = cols[1] || '';
+  const meaning = cols.slice(2).join(',').trim();
+  return [buildItem(kanji, reading, meaning)];
+}
+
+function parseBulk(text) {
+  return text.split('\n').flatMap(parseLine);
+}
+
+function renderPendingList() {
+  const wrap = document.getElementById('pending-list');
+  document.getElementById('pending-count').textContent = pendingItems.length;
+  if (pendingItems.length === 0) {
+    wrap.innerHTML = '<div class="empty-msg">まだありません</div>';
+    return;
+  }
+  wrap.innerHTML = pendingItems.map((it, i) => {
+    const sub = [it.reading, it.meaning].filter(Boolean).join(' / ');
+    const suspicious = it.kanji.length > 4 || it.reading.length > 12 || it.meaning.length > 20;
+    const mark = suspicious ? '⚠ ' : (it.guessed ? '🔍 ' : '');
+    return `
+      <div class="pending-item${suspicious ? ' pi-suspicious' : ''}${it.guessed && !suspicious ? ' pi-guessed' : ''}" data-index="${i}">
+        <div class="pi-main">
+          <span class="pi-kanji">${escapeHtml(it.kanji)}</span>
+          <span class="pi-sub">${mark}${escapeHtml(sub)}</span>
         </div>
+        <button class="pi-remove" data-index="${i}">✕</button>
+      </div>
+    `;
+  }).join('');
+  wrap.querySelectorAll('.pi-remove').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = parseInt(e.target.dataset.index, 10);
+      pendingItems.splice(idx, 1);
+      renderPendingList();
+    });
+  });
+}
 
-        <div class="section-title">登録した日</div>
-        <div id="day-list" class="day-list"></div>
+function saveDay() {
+  const label = document.getElementById('day-label-input').value.trim() || `${days.length + 1}日目`;
+  if (pendingItems.length === 0) {
+    alert('漢字が1つも登録されていません。');
+    return;
+  }
+  if (editingDayId) {
+    const day = days.find(d => d.id === editingDayId);
+    day.label = label;
+    day.items = pendingItems;
+  } else {
+    days.push({ id: uid(), label, createdAt: Date.now(), items: pendingItems });
+  }
+  saveDays(days);
+  renderHome();
+  showScreen('screen-home');
+}
 
-        <button id="add-day-btn" class="big-btn add-day">＋ 新しい日を追加する</button>
-      </section>
+/* ===================== Quiz setup screen ===================== */
+function openQuizSetup(presetDayId) {
+  const wrap = document.getElementById('setup-day-checks');
+  if (days.length === 0) {
+    wrap.innerHTML = '<div class="empty-msg">まだ漢字が登録されていません。</div>';
+  } else {
+    wrap.innerHTML = days.map(day => {
+      const checked = presetDayId ? (day.id === presetDayId) : true;
+      return `
+        <label>
+          <input type="checkbox" class="setup-day-check" value="${day.id}" ${checked ? 'checked' : ''}>
+          ${escapeHtml(day.label)}（${day.items.length}文字）
+        </label>
+      `;
+    }).join('');
+  }
+  showScreen('screen-quiz-setup');
+}
 
-      <!-- 日の追加・編集画面 -->
-      <section id="screen-add-day" class="screen">
-        <h2 id="add-day-title">新しい日を追加</h2>
+function startQuizFromSetup() {
+  const checked = Array.from(document.querySelectorAll('.setup-day-check:checked')).map(c => c.value);
+  if (checked.length === 0) {
+    alert('出題する日を1つ以上選んでください。');
+    return;
+  }
+  const items = [];
+  days.filter(d => checked.includes(d.id)).forEach(day => {
+    day.items.forEach(it => items.push({ ...it, dayLabel: day.label }));
+  });
+  if (items.length === 0) {
+    alert('選んだ日に漢字がありません。');
+    return;
+  }
+  const order = document.querySelector('input[name="quiz-order"]:checked').value;
+  const mode = document.querySelector('input[name="quiz-mode"]:checked').value;
+  const countVal = document.getElementById('count-select').value;
+  const queue = buildQueue(items, order, countVal);
+  startQuiz(queue, mode);
+}
 
-        <label class="field-label" for="day-label-input">この日の名前</label>
-        <input id="day-label-input" type="text" placeholder="例：1日目" class="text-input">
+function buildQueue(items, order, countVal) {
+  let list = items.slice();
+  if (order === 'random') {
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [list[i], list[j]] = [list[j], list[i]];
+    }
+  }
+  if (countVal !== 'all') {
+    const n = parseInt(countVal, 10);
+    if (!isNaN(n)) list = list.slice(0, n);
+  }
+  return list;
+}
 
-        <div class="input-mode-toggle button-row">
-          <button id="mode-single-btn" class="small-btn active">✏️ 1つずつ入力</button>
-          <button id="mode-bulk-btn" class="small-btn">📋 一括貼り付け</button>
-        </div>
+/* ===================== Stats / weak kanji ===================== */
+function recordAttempt(kanji, correct, score) {
+  if (!stats[kanji]) stats[kanji] = { attempts: 0, correct: 0, lastScore: 0, lastAt: 0 };
+  stats[kanji].attempts++;
+  if (correct) stats[kanji].correct++;
+  stats[kanji].lastScore = score;
+  stats[kanji].lastAt = Date.now();
+  saveStats(stats);
+}
 
-        <!-- 1つずつ入力 -->
-        <div id="single-input-area">
-          <div class="single-input-row">
-            <input id="single-kanji-input" type="text" placeholder="漢字（例：夏）" class="text-input single-kanji">
-            <input id="single-reading-input" type="text" placeholder="よみ（空欄なら自動入力）" class="text-input">
-            <input id="single-meaning-input" type="text" placeholder="意味（省略可）" class="text-input">
-          </div>
-          <button id="single-add-btn" class="big-btn add-day">＋ この漢字を追加する</button>
-        </div>
+function computeWeakList() {
+  return Object.entries(stats)
+    .filter(([k, s]) => s.attempts >= 2 && (s.correct / s.attempts) < 0.6)
+    .map(([k]) => k);
+}
 
-        <!-- 一括貼り付け -->
-        <div id="bulk-input-area" class="hidden">
-          <label class="field-label" for="day-bulk-input">
-            漢字を貼り付け（1行に1つ）<br>
-            <span class="hint">形式：漢字&#9;よみ&#9;意味（タブ・カンマ「,」・句読点「、」どれで区切ってもOK。漢字だけでもOK、よみは空欄なら自動推定します🔍。意味は省略できます）</span>
-          </label>
-          <textarea id="day-bulk-input" class="bulk-textarea" rows="8" placeholder="夏,なつ,あつい季節&#10;休,やすむ,学校を休む&#10;林"></textarea>
-          <button id="bulk-add-btn" class="big-btn add-day">＋ まとめてリストに追加する</button>
-        </div>
+function startWeakQuiz() {
+  const weakKanji = computeWeakList();
+  const lookup = allItems();
+  const items = [];
+  weakKanji.forEach(k => {
+    const found = lookup.find(it => it.kanji === k);
+    if (found) items.push(found);
+  });
+  if (items.length === 0) {
+    alert('にがてな漢字がありません。');
+    return;
+  }
+  startQuiz(buildQueue(items, 'random', 'all'), 'test');
+}
 
-        <label class="field-label">登録予定の漢字（<span id="pending-count">0</span>）</label>
-        <div id="pending-list" class="pending-list"></div>
+/* ===================== Quiz engine ===================== */
+let quizQueue = [];
+let quizMode = 'test';
+let quizIndex = 0;
+let quizResults = [];
 
-        <div class="button-row">
-          <button id="save-day-btn" class="big-btn primary">保存する</button>
-          <button id="cancel-day-btn" class="big-btn secondary">キャンセル</button>
-        </div>
-      </section>
+let inkCanvas = null;
+let inkCtx = null;
+let visCanvas = null;
+let visCtx = null;
+let boxRects = [];
+let drawing = false;
+let judged = false;
 
-      <!-- テスト設定画面 -->
-      <section id="screen-quiz-setup" class="screen">
-        <h2>テストを始める</h2>
+function startQuiz(queue, mode) {
+  if (!queue || queue.length === 0) {
+    alert('出題できる漢字がありません。');
+    return;
+  }
+  quizQueue = queue;
+  quizMode = mode;
+  quizIndex = 0;
+  quizResults = new Array(queue.length).fill(null);
+  showScreen('screen-quiz');
+  renderQuestion();
+}
 
-        <label class="field-label">出題する日</label>
-        <div class="button-row">
-          <button id="select-all-days-btn" class="small-btn">すべて選択</button>
-          <button id="select-none-days-btn" class="small-btn">選択を解除</button>
-        </div>
-        <div id="setup-day-checks" class="day-checks"></div>
+function currentItem() {
+  return quizQueue[quizIndex];
+}
 
-        <label class="field-label">出題モード</label>
-        <div class="radio-row" id="mode-radio">
-          <label><input type="radio" name="quiz-mode" value="test" checked> テスト（よみを見て書く）</label>
-          <label><input type="radio" name="quiz-mode" value="trace"> なぞり書き（お手本を見て書く）</label>
-        </div>
+function renderQuestion() {
+  judged = false;
+  document.getElementById('quiz-progress').textContent = `問題 ${quizIndex + 1}/${quizQueue.length}`;
+  document.getElementById('judge-result').classList.add('hidden');
+  document.getElementById('judge-btn').classList.remove('hidden');
+  document.getElementById('clear-canvas-btn').classList.remove('hidden');
 
-        <label class="field-label">出題順</label>
-        <div class="radio-row" id="order-radio">
-          <label><input type="radio" name="quiz-order" value="sequential" checked> 順番どおり</label>
-          <label><input type="radio" name="quiz-order" value="random"> ランダム</label>
-        </div>
+  const item = currentItem();
+  const promptEl = document.getElementById('quiz-prompt');
+  const submetaEl = document.getElementById('quiz-submeta');
 
-        <label class="field-label" for="count-select">問題数</label>
-        <select id="count-select" class="text-input">
-          <option value="all">すべて</option>
-          <option value="5">5問</option>
-          <option value="10">10問</option>
-          <option value="20">20問</option>
-        </select>
+  if (quizMode === 'trace') {
+    promptEl.textContent = 'お手本をなぞって書こう';
+    submetaEl.textContent = [item.reading, item.meaning].filter(Boolean).join(' ・ ');
+  } else {
+    if (item.reading) {
+      promptEl.textContent = item.reading;
+      submetaEl.textContent = item.meaning || 'この読みの漢字を書こう';
+    } else if (item.meaning) {
+      promptEl.textContent = item.meaning;
+      submetaEl.textContent = 'この意味の漢字を書こう';
+    } else {
+      promptEl.textContent = 'この漢字を書こう';
+      submetaEl.textContent = '（このカードには読み・意味の登録がありません）';
+    }
+  }
 
-        <div class="button-row">
-          <button id="start-quiz-btn" class="big-btn primary">スタート</button>
-          <button id="cancel-setup-btn" class="big-btn secondary">もどる</button>
-        </div>
-      </section>
+  setupCanvas(item.kanji, quizMode === 'trace');
+}
 
-      <!-- テスト画面 -->
-      <section id="screen-quiz" class="screen">
-        <div class="quiz-top-row">
-          <div class="quiz-progress" id="quiz-progress">問題 1/1</div>
-          <button id="end-quiz-btn" class="small-btn quiz-end-btn">🏁 終了する</button>
-        </div>
+function setupCanvas(targetText, showGuideGlyph) {
+  const chars = Array.from(targetText);
+  const n = Math.max(chars.length, 1);
+  const maxPerRow = 2;
+  const perRow = Math.min(n, maxPerRow);
+  const rows = Math.ceil(n / maxPerRow);
+  const gap = 10;
 
-        <div class="quiz-prompt" id="quiz-prompt"></div>
-        <div class="quiz-submeta" id="quiz-submeta"></div>
+  const wrapWidth = Math.min(document.getElementById('quiz-canvas-wrap').clientWidth || 480, 480);
+  let boxSize = Math.floor((wrapWidth - gap * (perRow - 1)) / perRow);
+  boxSize = Math.max(100, Math.min(280, boxSize));
 
-        <div class="quiz-canvas-wrap" id="quiz-canvas-wrap">
-          <canvas id="quiz-canvas"></canvas>
-        </div>
+  const width = perRow * boxSize + (perRow - 1) * gap;
+  const height = rows * boxSize + (rows - 1) * gap;
 
-        <div class="button-row">
-          <button id="clear-canvas-btn" class="small-btn">消す</button>
-          <button id="judge-btn" class="big-btn primary">✔ 判定する</button>
-        </div>
+  visCanvas = document.getElementById('quiz-canvas');
+  visCanvas.width = width;
+  visCanvas.height = height;
+  visCanvas.style.width = width + 'px';
+  visCanvas.style.height = height + 'px';
+  visCtx = visCanvas.getContext('2d');
 
-        <div id="judge-result" class="judge-result hidden">
-          <div class="judge-badge" id="judge-badge"></div>
-          <div class="judge-score" id="judge-score"></div>
-          <div class="judge-answer" id="judge-answer"></div>
-          <div class="button-row">
-            <button id="retry-question-btn" class="small-btn">もう一度書く</button>
-            <button id="next-question-btn" class="big-btn primary">次へ</button>
-          </div>
-        </div>
-      </section>
+  inkCanvas = document.createElement('canvas');
+  inkCanvas.width = width;
+  inkCanvas.height = height;
+  inkCtx = inkCanvas.getContext('2d');
 
-      <!-- 結果画面 -->
-      <section id="screen-result" class="screen">
-        <h2>けっか発表！</h2>
-        <div class="result-score" id="result-score"></div>
-        <div id="result-wrong-wrap">
-          <div class="section-title">まちがえた漢字</div>
-          <div id="result-wrong-list" class="wrong-list"></div>
-        </div>
-        <div class="button-row">
-          <button id="retry-wrong-btn" class="big-btn primary">まちがえた漢字だけもう一度</button>
-          <button id="result-home-btn" class="big-btn secondary">ホームへ</button>
-        </div>
-      </section>
+  boxRects = chars.map((c, i) => {
+    const row = Math.floor(i / maxPerRow);
+    const col = i % maxPerRow;
+    return {
+      x: col * (boxSize + gap),
+      y: row * (boxSize + gap),
+      w: boxSize,
+      h: boxSize,
+      char: c
+    };
+  });
 
-    </div>
-  </div>
+  drawGuide(showGuideGlyph);
+  attachCanvasHandlers();
+}
 
-  <script src="kanji-readings-data.js"></script>
-  <script src="kanji.js"></script>
-</body>
-</html>
+function drawGuide(showGuideGlyph) {
+  visCtx.clearRect(0, 0, visCanvas.width, visCanvas.height);
+  visCtx.fillStyle = '#ffffff';
+  visCtx.fillRect(0, 0, visCanvas.width, visCanvas.height);
+
+  boxRects.forEach(r => {
+    visCtx.strokeStyle = '#d0d0d0';
+    visCtx.lineWidth = 2;
+    visCtx.strokeRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2);
+
+    visCtx.strokeStyle = '#e8e8e8';
+    visCtx.setLineDash([4, 4]);
+    visCtx.beginPath();
+    visCtx.moveTo(r.x + r.w / 2, r.y);
+    visCtx.lineTo(r.x + r.w / 2, r.y + r.h);
+    visCtx.moveTo(r.x, r.y + r.h / 2);
+    visCtx.lineTo(r.x + r.w, r.y + r.h / 2);
+    visCtx.stroke();
+    visCtx.setLineDash([]);
+
+    if (showGuideGlyph) {
+      visCtx.fillStyle = 'rgba(0,0,0,0.2)';
+      visCtx.font = `${Math.floor(r.h * 0.72)}px "Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", serif`;
+      visCtx.textAlign = 'center';
+      visCtx.textBaseline = 'middle';
+      visCtx.fillText(r.char, r.x + r.w / 2, r.y + r.h / 2 + r.h * 0.05);
+    }
+  });
+}
+
+function attachCanvasHandlers() {
+  visCanvas.onpointerdown = (e) => {
+    drawing = true;
+    visCanvas.setPointerCapture(e.pointerId);
+    const pos = getPos(e);
+    beginStroke(pos);
+  };
+  visCanvas.onpointermove = (e) => {
+    if (!drawing) return;
+    const pos = getPos(e);
+    drawStroke(pos);
+  };
+  const end = () => { drawing = false; };
+  visCanvas.onpointerup = end;
+  visCanvas.onpointercancel = end;
+  visCanvas.onpointerleave = end;
+}
+
+function getPos(e) {
+  const rect = visCanvas.getBoundingClientRect();
+  const scaleX = visCanvas.width / rect.width;
+  const scaleY = visCanvas.height / rect.height;
+  return {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top) * scaleY
+  };
+}
+
+let lastPos = null;
+function beginStroke(pos) {
+  lastPos = pos;
+  const lw = Math.max(6, (boxRects[0] ? boxRects[0].w : 120) * 0.06);
+  [visCtx, inkCtx].forEach(ctx => {
+    ctx.lineWidth = lw;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#000';
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  });
+}
+function drawStroke(pos) {
+  [visCtx, inkCtx].forEach(ctx => {
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  });
+  lastPos = pos;
+}
+
+function clearCanvas() {
+  drawGuide(quizMode === 'trace');
+  inkCtx.clearRect(0, 0, inkCanvas.width, inkCanvas.height);
+}
+
+/* ---- Scoring ---- */
+function scoreBox(rect) {
+  const w = rect.w, h = rect.h;
+
+  const refCanvas = document.createElement('canvas');
+  refCanvas.width = w;
+  refCanvas.height = h;
+  const refCtx = refCanvas.getContext('2d');
+  refCtx.fillStyle = '#fff';
+  refCtx.fillRect(0, 0, w, h);
+  refCtx.fillStyle = '#000';
+  refCtx.font = `${Math.floor(h * 0.72)}px "Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", serif`;
+  refCtx.textAlign = 'center';
+  refCtx.textBaseline = 'middle';
+  refCtx.fillText(rect.char, w / 2, h / 2 + h * 0.05);
+  const refData = refCtx.getImageData(0, 0, w, h).data;
+
+  const inkData = inkCtx.getImageData(rect.x, rect.y, w, h).data;
+
+  const grid = Math.max(14, Math.min(26, Math.floor(w / 8)));
+  const cellW = w / grid;
+  const cellH = h / grid;
+  const threshold = 0.2;
+
+  let inter = 0, refCount = 0, inkCount = 0;
+
+  for (let gy = 0; gy < grid; gy++) {
+    for (let gx = 0; gx < grid; gx++) {
+      const x0 = Math.floor(gx * cellW);
+      const y0 = Math.floor(gy * cellH);
+      const x1 = Math.floor((gx + 1) * cellW);
+      const y1 = Math.floor((gy + 1) * cellH);
+
+      let refSum = 0, inkSum = 0, count = 0;
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const idx = (y * w + x) * 4;
+          const refDark = (255 - refData[idx]) / 255;
+          const inkAlpha = inkData[idx + 3] / 255;
+          refSum += refDark;
+          inkSum += inkAlpha;
+          count++;
+        }
+      }
+      if (count === 0) continue;
+      const refActive = (refSum / count) > threshold;
+      const inkActive = (inkSum / count) > threshold;
+      if (refActive) refCount++;
+      if (inkActive) inkCount++;
+      if (refActive && inkActive) inter++;
+    }
+  }
+
+  const precision = inkCount > 0 ? inter / inkCount : 0;
+  const recall = refCount > 0 ? inter / refCount : 0;
+  const f1 = (precision + recall) > 0 ? (2 * precision * recall) / (precision + recall) : 0;
+
+  // 塗りつぶすように広い面積を書くと重なり具合だけで高得点になってしまうため、
+  // マス目に対するインクの占有率が高すぎる場合はスコアを減点する（殴り書き対策）。
+  const totalCells = grid * grid;
+  const inkCoverage = totalCells > 0 ? inkCount / totalCells : 0;
+  const coveragePenalty = inkCoverage <= 0.5 ? 1 : Math.max(0, 1 - (inkCoverage - 0.5) / 0.35);
+
+  return Math.round(f1 * coveragePenalty * 100);
+}
+
+function judgeQuestion() {
+  if (judged) return;
+  judged = true;
+
+  const scores = boxRects.map(scoreBox);
+  const overall = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+  const correct = overall >= getPassThreshold();
+
+  const item = currentItem();
+  quizResults[quizIndex] = { score: overall, correct };
+  recordAttempt(item.kanji, correct, overall);
+
+  const badge = document.getElementById('judge-badge');
+  badge.textContent = correct ? '⭕ せいかい！' : '❌ おしい！';
+  badge.className = 'judge-badge ' + (correct ? 'correct' : 'incorrect');
+
+  document.getElementById('judge-score').textContent = `一致度：${overall}点`;
+
+  const answerParts = [`正解：${item.kanji}`];
+  if (item.reading) answerParts.push(`（${item.reading}）`);
+  if (item.meaning) answerParts.push(item.meaning);
+  document.getElementById('judge-answer').textContent = answerParts.join(' ');
+
+  document.getElementById('judge-result').classList.remove('hidden');
+  document.getElementById('judge-btn').classList.add('hidden');
+  document.getElementById('clear-canvas-btn').classList.add('hidden');
+
+  const nextBtn = document.getElementById('next-question-btn');
+  nextBtn.textContent = (quizIndex + 1 < quizQueue.length) ? '次へ' : '結果を見る';
+}
+
+function retryQuestion() {
+  clearCanvas();
+  judged = false;
+  document.getElementById('judge-result').classList.add('hidden');
+  document.getElementById('judge-btn').classList.remove('hidden');
+  document.getElementById('clear-canvas-btn').classList.remove('hidden');
+}
+
+function nextQuestion() {
+  quizIndex++;
+  if (quizIndex >= quizQueue.length) {
+    finishQuiz();
+  } else {
+    renderQuestion();
+  }
+}
+
+function endQuizEarly() {
+  const answeredCount = judged ? quizIndex + 1 : quizIndex;
+  if (answeredCount === 0) {
+    if (confirm('まだ1問も答えていません。テストをやめてホームに戻りますか？')) {
+      renderHome();
+      showScreen('screen-home');
+    }
+    return;
+  }
+  if (!confirm(`ここまで（${answeredCount}問）で終了して結果を見ますか？`)) return;
+  quizQueue = quizQueue.slice(0, answeredCount);
+  quizResults = quizResults.slice(0, answeredCount);
+  finishQuiz();
+}
+
+function finishQuiz() {
+  const total = quizQueue.length;
+  const correctCount = quizResults.filter(r => r && r.correct).length;
+  const pct = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+
+  document.getElementById('result-score').textContent = `${correctCount} / ${total} 問正解（${pct}%）`;
+
+  const wrongEl = document.getElementById('result-wrong-list');
+  const wrongItems = [];
+  quizQueue.forEach((item, i) => {
+    const r = quizResults[i];
+    if (r && !r.correct) wrongItems.push({ item, r });
+  });
+
+  if (wrongItems.length === 0) {
+    wrongEl.innerHTML = '<div class="empty-msg">まちがえた漢字はありません！すごい！</div>';
+    document.getElementById('retry-wrong-btn').classList.add('hidden');
+  } else {
+    document.getElementById('retry-wrong-btn').classList.remove('hidden');
+    wrongEl.innerHTML = wrongItems.map(({ item, r }) => `
+      <div class="wrong-item">
+        <span><span class="wi-kanji">${escapeHtml(item.kanji)}</span> ${escapeHtml(item.reading || '')}</span>
+        <span class="wi-score">${r.score}点</span>
+      </div>
+    `).join('');
+  }
+
+  window._lastWrongItems = wrongItems.map(w => w.item);
+
+  renderHome();
+  showScreen('screen-result');
+}
+
+function retryWrongOnly() {
+  const items = window._lastWrongItems || [];
+  if (items.length === 0) return;
+  startQuiz(buildQueue(items, 'sequential', 'all'), 'test');
+}
+
+/* ===================== Event wiring ===================== */
+function setupEventListeners() {
+  document.getElementById('home-title-btn').addEventListener('click', () => {
+    renderHome();
+    showScreen('screen-home');
+  });
+
+  document.getElementById('quick-random-btn').addEventListener('click', () => {
+    const items = allItems();
+    if (items.length === 0) {
+      alert('まだ漢字が登録されていません。');
+      return;
+    }
+    startQuiz(buildQueue(items, 'random', '20'), 'test');
+  });
+  document.getElementById('goto-setup-btn').addEventListener('click', openQuizSetup);
+  document.getElementById('weak-quiz-btn').addEventListener('click', startWeakQuiz);
+  document.getElementById('add-day-btn').addEventListener('click', () => openAddDay(null));
+
+  document.querySelectorAll('.spice-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      leniency = btn.dataset.level;
+      saveLeniency(leniency);
+      renderSpiceButtons();
+    });
+  });
+
+  document.getElementById('mode-single-btn').addEventListener('click', () => setInputMode('single'));
+  document.getElementById('mode-bulk-btn').addEventListener('click', () => setInputMode('bulk'));
+
+  document.getElementById('single-kanji-input').addEventListener('blur', () => {
+    const kanjiEl = document.getElementById('single-kanji-input');
+    const readingEl = document.getElementById('single-reading-input');
+    const kanji = kanjiEl.value.trim();
+    if (kanji && !readingEl.value.trim()) {
+      const g = guessReading(kanji);
+      if (g) readingEl.value = g;
+    }
+  });
+
+  document.getElementById('single-add-btn').addEventListener('click', () => {
+    const kanji = document.getElementById('single-kanji-input').value.trim();
+    if (!kanji) {
+      alert('漢字を入力してください。');
+      return;
+    }
+    const reading = document.getElementById('single-reading-input').value.trim();
+    const meaning = document.getElementById('single-meaning-input').value.trim();
+    pendingItems.push({ id: uid(), kanji, reading, meaning, guessed: false });
+    renderPendingList();
+    document.getElementById('single-kanji-input').value = '';
+    document.getElementById('single-reading-input').value = '';
+    document.getElementById('single-meaning-input').value = '';
+    document.getElementById('single-kanji-input').focus();
+  });
+
+  document.getElementById('bulk-add-btn').addEventListener('click', () => {
+    const text = document.getElementById('day-bulk-input').value;
+    const parsed = parseBulk(text);
+    if (parsed.length === 0) {
+      alert('読み取れる漢字がありませんでした。');
+      return;
+    }
+    pendingItems = pendingItems.concat(parsed);
+    renderPendingList();
+    document.getElementById('day-bulk-input').value = '';
+  });
+
+  document.getElementById('save-day-btn').addEventListener('click', saveDay);
+  document.getElementById('cancel-day-btn').addEventListener('click', () => showScreen('screen-home'));
+
+  document.getElementById('select-all-days-btn').addEventListener('click', () => {
+    document.querySelectorAll('.setup-day-check').forEach(c => c.checked = true);
+  });
+  document.getElementById('select-none-days-btn').addEventListener('click', () => {
+    document.querySelectorAll('.setup-day-check').forEach(c => c.checked = false);
+  });
+  document.getElementById('start-quiz-btn').addEventListener('click', startQuizFromSetup);
+  document.getElementById('cancel-setup-btn').addEventListener('click', () => showScreen('screen-home'));
+
+  document.getElementById('clear-canvas-btn').addEventListener('click', clearCanvas);
+  document.getElementById('judge-btn').addEventListener('click', judgeQuestion);
+  document.getElementById('retry-question-btn').addEventListener('click', retryQuestion);
+  document.getElementById('next-question-btn').addEventListener('click', nextQuestion);
+  document.getElementById('end-quiz-btn').addEventListener('click', endQuizEarly);
+
+  document.getElementById('retry-wrong-btn').addEventListener('click', retryWrongOnly);
+  document.getElementById('result-home-btn').addEventListener('click', () => {
+    renderHome();
+    showScreen('screen-home');
+  });
+
+  window.addEventListener('resize', () => {
+    if (document.getElementById('screen-quiz').classList.contains('active') && currentItem()) {
+      setupCanvas(currentItem().kanji, quizMode === 'trace' && !judged);
+    }
+  });
+}
+
+/* ===================== Init ===================== */
+function init() {
+  renderHome();
+  setupEventListeners();
+}
+
+init();
