@@ -511,6 +511,16 @@ function setupCanvas(targetText, showGuideGlyph) {
   attachCanvasHandlers();
 }
 
+// 明朝体は線が細く、実際のペンの太さより細いためなぞってもズレて減点されやすい。
+// 同じ文字を少しずつ位置をずらして重ね書きすることで、見た目にも採点用にも太くする。
+function fillTextBold(ctx, text, cx, cy, boldness) {
+  for (let dx = -boldness; dx <= boldness; dx++) {
+    for (let dy = -boldness; dy <= boldness; dy++) {
+      ctx.fillText(text, cx + dx, cy + dy);
+    }
+  }
+}
+
 function drawGuide(showGuideGlyph) {
   visCtx.clearRect(0, 0, visCanvas.width, visCanvas.height);
   visCtx.fillStyle = '#ffffff';
@@ -532,11 +542,12 @@ function drawGuide(showGuideGlyph) {
     visCtx.setLineDash([]);
 
     if (showGuideGlyph) {
-      visCtx.fillStyle = 'rgba(0,0,0,0.2)';
+      visCtx.fillStyle = 'rgba(0,0,0,0.22)';
       visCtx.font = `${Math.floor(r.h * 0.72)}px "Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", serif`;
       visCtx.textAlign = 'center';
       visCtx.textBaseline = 'middle';
-      visCtx.fillText(r.char, r.x + r.w / 2, r.y + r.h / 2 + r.h * 0.05);
+      const boldness = Math.max(2, Math.round(r.h * 0.025));
+      fillTextBold(visCtx, r.char, r.x + r.w / 2, r.y + r.h / 2 + r.h * 0.05, boldness);
     }
   });
 }
@@ -609,7 +620,10 @@ function scoreBox(rect) {
   refCtx.font = `${Math.floor(h * 0.72)}px "Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", serif`;
   refCtx.textAlign = 'center';
   refCtx.textBaseline = 'middle';
-  refCtx.fillText(rect.char, w / 2, h / 2 + h * 0.05);
+  // 採点用の正解の形は、実際のペンの太さに近づけて少し太らせる（細い明朝体のままだと
+  // 正確になぞっても線がはみ出したと判定され減点されてしまうため）。
+  const refBoldness = Math.max(3, Math.round(h * 0.035));
+  fillTextBold(refCtx, rect.char, w / 2, h / 2 + h * 0.05, refBoldness);
   const refData = refCtx.getImageData(0, 0, w, h).data;
 
   const inkData = inkCtx.getImageData(rect.x, rect.y, w, h).data;
