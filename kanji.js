@@ -542,14 +542,14 @@ function drawGuide(showGuideGlyph) {
     visCtx.setLineDash([]);
 
     if (showGuideGlyph) {
-      // なぞり用のお手本は「薄い色」で表示する。半透明色を重ね塗りすると透明度が
-      // 積み重なって真っ黒になってしまうため、不透明の薄いグレーを使う（重ねても濃くならない）。
+      // なぞり用のお手本は「細く・薄い色」で表示する（見本なので目立たせない）。
+      // 太らせる処理はせず1回だけ描画し、明朝体本来の細い線のままにする。
+      // 採点用のお手本の太さは scoreBox 側で別に決めているため、ここは表示だけに影響する。
       visCtx.fillStyle = '#cfcfcf';
       visCtx.font = `${Math.floor(r.h * 0.72)}px "Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", serif`;
       visCtx.textAlign = 'center';
       visCtx.textBaseline = 'middle';
-      const boldness = Math.max(2, Math.round(r.h * 0.025));
-      fillTextBold(visCtx, r.char, r.x + r.w / 2, r.y + r.h / 2 + r.h * 0.05, boldness);
+      visCtx.fillText(r.char, r.x + r.w / 2, r.y + r.h / 2 + r.h * 0.05);
     }
   });
 }
