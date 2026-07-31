@@ -542,7 +542,9 @@ function drawGuide(showGuideGlyph) {
     visCtx.setLineDash([]);
 
     if (showGuideGlyph) {
-      visCtx.fillStyle = 'rgba(0,0,0,0.22)';
+      // なぞり用のお手本は「薄い色」で表示する。半透明色を重ね塗りすると透明度が
+      // 積み重なって真っ黒になってしまうため、不透明の薄いグレーを使う（重ねても濃くならない）。
+      visCtx.fillStyle = '#cfcfcf';
       visCtx.font = `${Math.floor(r.h * 0.72)}px "Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", serif`;
       visCtx.textAlign = 'center';
       visCtx.textBaseline = 'middle';
