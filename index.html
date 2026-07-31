@@ -60,7 +60,7 @@
         <div id="single-input-area">
           <div class="single-input-row">
             <input id="single-kanji-input" type="text" placeholder="漢字（例：夏）" class="text-input single-kanji">
-            <input id="single-reading-input" type="text" placeholder="よみ（省略可）" class="text-input">
+            <input id="single-reading-input" type="text" placeholder="よみ（空欄なら自動入力）" class="text-input">
             <input id="single-meaning-input" type="text" placeholder="意味（省略可）" class="text-input">
           </div>
           <button id="single-add-btn" class="big-btn add-day">＋ この漢字を追加する</button>
@@ -70,7 +70,7 @@
         <div id="bulk-input-area" class="hidden">
           <label class="field-label" for="day-bulk-input">
             漢字を貼り付け（1行に1つ）<br>
-            <span class="hint">形式：漢字&#9;よみ&#9;意味（タブまたはカンマ区切り。よみ・意味は省略できます）</span>
+            <span class="hint">形式：漢字&#9;よみ&#9;意味（タブ・カンマ「,」・句読点「、」どれで区切ってもOK。漢字だけでもOK、よみは空欄なら自動推定します🔍。意味は省略できます）</span>
           </label>
           <textarea id="day-bulk-input" class="bulk-textarea" rows="8" placeholder="夏,なつ,あつい季節&#10;休,やすむ,学校を休む&#10;林"></textarea>
           <button id="bulk-add-btn" class="big-btn add-day">＋ まとめてリストに追加する</button>
@@ -169,6 +169,7 @@
     </div>
   </div>
 
+  <script src="kanji-readings-data.js"></script>
   <script src="kanji.js"></script>
 </body>
 </html>
