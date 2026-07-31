@@ -288,6 +288,13 @@ body {
   padding: 1rem 0;
 }
 
+.transfer-note {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  margin-bottom: 0.6rem;
+}
+
 /* Add day form */
 .field-label {
   display: block;

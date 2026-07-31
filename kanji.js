@@ -783,6 +783,80 @@ function retryWrongOnly() {
   startQuiz(buildQueue(items, 'sequential', 'all'), 'test');
 }
 
+/* ===================== Export / Import (端末間の引き継ぎ) ===================== */
+// 登録データ(days)と成績(stats)を1つのJSONファイルに書き出す。
+// サーバーを使わず、書き出したファイルを別端末で読み込むことでデータを移せる。
+function exportData() {
+  if (days.length === 0) {
+    alert('書き出す漢字データがまだありません。');
+    return;
+  }
+  const payload = {
+    app: 'kanjiApp',
+    version: 1,
+    exportedAt: Date.now(),
+    days,
+    stats
+  };
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `kanji-data-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// 読み込んだファイルの内容を既存データにマージする。
+// 同じidの日は上書き、無い日は追加。成績も合算(attemptsが多い方を優先)する。
+function mergeImported(payload) {
+  if (!payload || payload.app !== 'kanjiApp' || !Array.isArray(payload.days)) {
+    throw new Error('形式が正しくありません');
+  }
+  const byId = new Map(days.map(d => [d.id, d]));
+  payload.days.forEach(d => {
+    if (d && d.id && Array.isArray(d.items)) byId.set(d.id, d);
+  });
+  days = Array.from(byId.values());
+  saveDays(days);
+
+  if (payload.stats && typeof payload.stats === 'object') {
+    Object.entries(payload.stats).forEach(([k, s]) => {
+      const cur = stats[k];
+      if (!cur || (s.attempts || 0) >= (cur.attempts || 0)) stats[k] = s;
+    });
+    saveStats(stats);
+  }
+}
+
+function importData(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const payload = JSON.parse(reader.result);
+      const incoming = Array.isArray(payload.days) ? payload.days.length : 0;
+      if (!confirm(`ファイルから ${incoming} 日ぶんの漢字データを読み込みます。今あるデータに追加してよいですか？`)) {
+        return;
+      }
+      mergeImported(payload);
+      renderHome();
+      alert('読み込みが完了しました！');
+    } catch (e) {
+      alert('読み込みに失敗しました。正しい書き出しファイルか確認してください。');
+    }
+  };
+  reader.onerror = () => alert('ファイルを読み込めませんでした。');
+  reader.readAsText(file);
+}
+
 /* ===================== Event wiring ===================== */
 function setupEventListeners() {
   document.getElementById('home-title-btn').addEventListener('click', () => {
@@ -801,6 +875,16 @@ function setupEventListeners() {
   document.getElementById('goto-setup-btn').addEventListener('click', openQuizSetup);
   document.getElementById('weak-quiz-btn').addEventListener('click', startWeakQuiz);
   document.getElementById('add-day-btn').addEventListener('click', () => openAddDay(null));
+
+  document.getElementById('export-data-btn').addEventListener('click', exportData);
+  document.getElementById('import-data-btn').addEventListener('click', () => {
+    document.getElementById('import-file-input').click();
+  });
+  document.getElementById('import-file-input').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) importData(file);
+    e.target.value = '';
+  });
 
   document.querySelectorAll('.spice-btn').forEach(btn => {
     btn.addEventListener('click', () => {

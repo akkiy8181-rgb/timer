@@ -42,6 +42,14 @@
         <div id="day-list" class="day-list"></div>
 
         <button id="add-day-btn" class="big-btn add-day">＋ 新しい日を追加する</button>
+
+        <div class="section-title">データの引き継ぎ</div>
+        <div class="transfer-note">登録した漢字はこの端末だけに保存されます。別の端末で使うときは、ここから書き出したファイルを、その端末で読み込んでください。</div>
+        <div class="button-row">
+          <button id="export-data-btn" class="small-btn">⬇ 書き出す（保存）</button>
+          <button id="import-data-btn" class="small-btn">⬆ 読み込む（復元）</button>
+        </div>
+        <input id="import-file-input" type="file" accept="application/json,.json" hidden>
       </section>
 
       <!-- 日の追加・編集画面 -->
