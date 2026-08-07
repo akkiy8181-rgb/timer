@@ -666,11 +666,9 @@ function scoreBox(rect) {
 
   const precision = inkCount > 0 ? inter / inkCount : 0;
   const recall = refCount > 0 ? inter / refCount : 0;
-  // 「お手本をどれだけなぞれたか(recall)」を重視して甘めに採点する。
-  // 多少はみ出して precision が下がっても大きくは減点しない（β=2 の加重Fスコア）。
-  const beta2 = 4; // β=2 の2乗
-  const fDenom = beta2 * precision + recall;
-  const fscore = fDenom > 0 ? ((1 + beta2) * precision * recall) / fDenom : 0;
+  // 「お手本を覆えたか(recall)」と「はみ出していないか(precision)」をバランスよく見る(F1)。
+  // recall だけを重視すると、なぞらず1本線を引いただけの殴り書きでも通ってしまうため。
+  const f1 = (precision + recall) > 0 ? (2 * precision * recall) / (precision + recall) : 0;
 
   // 塗りつぶすように広い面積を書くと重なり具合だけで高得点になってしまうため、
   // マス目に対するインクの占有率が高すぎる場合はスコアを減点する（殴り書き対策）。
@@ -680,8 +678,9 @@ function scoreBox(rect) {
 
   // 手書きは多少ずれても形が合っていれば甘めに評価する（判定をマイルドにする補正カーブ）。
   // 指数0.7で中間帯を持ち上げる: 例) 0.36→0.49, 0.5→0.62, 0.7→0.78。
-  const raw = fscore * coveragePenalty;
-  const eased = Math.pow(raw, 0.7);
+  // 甘さ補正はごく軽め(指数0.85)。強くしすぎると殴り書きの点まで底上げされてしまう。
+  const raw = f1 * coveragePenalty;
+  const eased = Math.pow(raw, 0.85);
   return Math.round(eased * 100);
 }
 
