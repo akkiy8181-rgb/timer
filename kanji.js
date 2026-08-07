@@ -585,7 +585,7 @@ function getPos(e) {
 let lastPos = null;
 function beginStroke(pos) {
   lastPos = pos;
-  const lw = Math.max(10, (boxRects[0] ? boxRects[0].w : 120) * 0.11);
+  const lw = Math.max(6, (boxRects[0] ? boxRects[0].w : 120) * 0.06);
   [visCtx, inkCtx].forEach(ctx => {
     ctx.lineWidth = lw;
     ctx.lineCap = 'round';
