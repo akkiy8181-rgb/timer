@@ -394,7 +394,7 @@ $fLeft.addEventListener('click', () => { filterLeft = true; render(); });
 
 const noOboe = SETS.filter(s => !s.words.some(w => w.o)).length;
 document.getElementById('noteOboe').textContent =
-  noOboe ? '青い「覚え方」は2学期分（第19〜23回）と21日目に入っています。' : '';
+  noOboe ? '青い「覚え方」は、ついている回だけ表示されます。' : '';
 
 buildChips();
 render();
