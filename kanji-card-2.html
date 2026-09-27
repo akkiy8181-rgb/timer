@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>かんじカード</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+:root{
+  color-scheme: light;
+  --paper:#faf7f0;
+  --surface:#ffffff;
+  --ink:#1b1c2b;
+  --ink-soft:#6b6a78;
+  --ink-faint:#9b99a6;
+  --line:#e5e0d6;
+  --line-strong:#cfc8ba;
+  --red:#d81f34;
+  --red-film:#e8415a;
+  --orange:#ea580c;
+  --green:#15803d;
+  --blue:#1d4ed8;
+  --blue-bg:#eef3ff;
+  --blue-rail:#9db8f0;
+  --done:#0f766e;
+  --done-bg:#e6f4f1;
+  --shadow:0 1px 2px rgba(27,28,43,.06), 0 4px 14px rgba(27,28,43,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --paper:#14151d;
+    --surface:#1d1f2a;
+    --ink:#eceaf2;
+    --ink-soft:#a7a4b5;
+    --ink-faint:#7b7889;
+    --line:#2c2f3d;
+    --line-strong:#3d4152;
+    --red:#ff6b7d;
+    --red-film:#b93248;
+    --orange:#fb923c;
+    --green:#5ec07f;
+    --blue:#9dbcff;
+    --blue-bg:#1b2438;
+    --blue-rail:#3c5a9e;
+    --done:#5eead4;
+    --done-bg:#12302e;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --paper:#14151d;
+  --surface:#1d1f2a;
+  --ink:#eceaf2;
+  --ink-soft:#a7a4b5;
+  --ink-faint:#7b7889;
+  --line:#2c2f3d;
+  --line-strong:#3d4152;
+  --red:#ff6b7d;
+  --red-film:#b93248;
+  --orange:#fb923c;
+  --green:#5ec07f;
+  --blue:#9dbcff;
+  --blue-bg:#1b2438;
+  --blue-rail:#3c5a9e;
+  --done:#5eead4;
+  --done-bg:#12302e;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.3);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Zen Kaku Gothic New','Hiragino Sans','Yu Gothic',system-ui,sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+
+/* ---------- header ---------- */
+.bar{
+  position:sticky;
+  top:env(safe-area-inset-top, 0px);
+  z-index:20;
+  background:var(--paper);
+  border-bottom:1px solid var(--line);
+}
+.bar-in{padding-block:10px 8px;padding-left:16px;padding-right:16px;display:flex;flex-direction:column;gap:8px}
+.brandrow{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.brand{font-size:16px;font-weight:700;letter-spacing:.04em;display:flex;align-items:baseline;gap:7px}
+.brand .dot{width:7px;height:7px;border-radius:50%;background:var(--orange);display:inline-block;transform:translateY(-2px)}
+.count{font-size:12px;color:var(--ink-soft);font-variant-numeric:tabular-nums;white-space:nowrap}
+.count b{color:var(--done);font-weight:700}
+
+.steps{
+  font-size:11px;line-height:1.5;color:var(--orange);
+  display:flex;flex-wrap:wrap;gap:2px 12px;
+}
+.steps span{white-space:nowrap}
+
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.grp{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.grp-label{font-size:10px;color:var(--ink-faint);letter-spacing:.08em;padding-right:2px;white-space:nowrap}
+.chip{
+  flex:0 0 auto;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-soft);
+  font:inherit;font-size:13px;font-weight:500;padding:6px 12px;border-radius:999px;cursor:pointer;
+  white-space:nowrap;font-family:inherit;
+}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper);font-weight:700}
+
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{
+  border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);
+  font:inherit;font-size:13px;font-weight:500;padding:7px 14px;border-radius:8px;cursor:pointer;
+}
+.btn:active{transform:translateY(1px)}
+.seg{display:flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden}
+.seg button{
+  border:0;background:var(--surface);color:var(--ink-soft);font:inherit;font-size:13px;
+  padding:7px 13px;cursor:pointer;
+}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper);font-weight:700}
+:is(.chip,.btn,.seg button):focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+
+/* ---------- list ---------- */
+main{padding-block:14px 40px;padding-left:16px;padding-right:16px;display:flex;flex-direction:column;gap:10px;max-width:620px;margin:0 auto}
+
+.card{
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  box-shadow:var(--shadow);overflow:hidden;
+  display:grid;grid-template-columns:34px 1fr;
+}
+.card.is-done{border-color:var(--done);background:var(--done-bg)}
+.cnum{
+  display:flex;align-items:flex-start;justify-content:center;padding-top:13px;
+  font-size:12px;font-weight:700;color:var(--ink-faint);
+  border-right:1px dashed var(--line);font-variant-numeric:tabular-nums;
+}
+.card.is-done .cnum{color:var(--done)}
+.cbody{padding:10px 12px 12px;display:flex;flex-direction:column;gap:7px;min-width:0}
+
+.yomi{font-size:20px;font-weight:700;letter-spacing:.02em;line-height:1.3;word-break:break-word}
+.imi{font-size:12.5px;color:var(--green);line-height:1.5}
+
+/* red-sheet panel */
+.reveal{
+  position:relative;display:block;width:100%;border:0;padding:0;cursor:pointer;
+  background:transparent;font:inherit;border-radius:9px;
+  -webkit-tap-highlight-color:transparent;
+}
+.film{
+  position:relative;display:flex;align-items:center;justify-content:center;
+  min-height:72px;border-radius:9px;border:1.5px solid var(--line-strong);
+  background:var(--paper);overflow:hidden;
+}
+.kanji{
+  font-family:'Noto Serif JP','Yu Mincho',serif;
+  font-size:34px;font-weight:700;color:var(--red);line-height:1.2;
+  padding:8px 10px;text-align:center;word-break:break-word;
+  opacity:0;transition:opacity .18s ease;
+}
+.sheet{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:var(--red-film);color:#fff;font-size:12px;font-weight:700;letter-spacing:.1em;
+  transition:opacity .18s ease;
+}
+.reveal[aria-expanded="true"] .kanji{opacity:1}
+.reveal[aria-expanded="true"] .sheet{opacity:0;pointer-events:none}
+.reveal:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){
+  .kanji,.sheet{transition:none}
+}
+
+.oboe{
+  font-size:11.5px;line-height:1.55;color:var(--blue);background:var(--blue-bg);
+  border-left:3px solid var(--blue-rail);border-radius:0 5px 5px 0;padding:5px 8px;
+}
+.crow{display:flex;justify-content:flex-end}
+.done{
+  border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-soft);
+  font:inherit;font-size:12px;padding:5px 12px;border-radius:999px;cursor:pointer;
+}
+.done[aria-pressed="true"]{background:var(--done);border-color:var(--done);color:var(--surface);font-weight:700}
+.done:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+
+.empty{
+  text-align:center;color:var(--ink-soft);font-size:14px;padding:44px 16px;line-height:1.7;
+  border:1px dashed var(--line-strong);border-radius:12px;
+}
+.note{
+  max-width:620px;margin:0 auto;padding:0 16px 34px;
+  font-size:11.5px;line-height:1.7;color:var(--ink-faint);
+}
+.note b{color:var(--ink-soft)}
+body{margin:0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="bar-in">
+    <div class="brandrow">
+      <div class="brand"><span class="dot"></span>かんじカード</div>
+      <div class="count" id="count"></div>
+    </div>
+    <div class="steps">
+      <span>① 左指をそえて読む</span>
+      <span>② しゃべりながら書く</span>
+      <span>③ 1回ごとに絵をうかべる</span>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="tools">
+      <button class="btn" id="toggleAll" type="button">ぜんぶ見せる</button>
+      <div class="seg" role="group" aria-label="表示する語">
+        <button type="button" id="fAll" aria-pressed="true">すべて</button>
+        <button type="button" id="fLeft" aria-pressed="false">まだ</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main id="list"></main>
+<p class="note">
+  漢字の形は印刷プリントの<b>教科書体</b>が正です。この画面は読み・意味・覚え方の確認用に使ってください。
+  <span id="noteOboe"></span>
+</p>
+
+<script>
+const SETS = [{"id":"k16","term":"2年","label":"第16回","words":[{"k":"教科書","y":"きょうかしょ","i":"学校で つかう 本","o":"教える＋科目＋書く本。三つの字でできている"},{"k":"社ちょう","y":"しゃちょう","i":"会社で いちばん 上の 人","o":"「社」は しめすへん＋土。ちょうは ひらがな"},{"k":"会う","y":"あう","i":"人と 人が 出あう","o":"「会」は 人やねの 下に 二と ム"},{"k":"理ゆう","y":"りゆう","i":"そうなった わけ","o":"「理」は 王へん＋さと。ゆうは ひらがな"},{"k":"理科","y":"りか","i":"生きものや 空・水を しらべる かもく","o":"理（わけ）を 科（しらべる）"},{"k":"大会","y":"たいかい","i":"大ぜいが あつまる もよおし","o":"大きな 会（あつまり）"},{"k":"国会","y":"こっかい","i":"国の きまりを はなしあう ところ","o":"国の 会。よみは「こっ」と つまる"},{"k":"りょう理","y":"りょうり","i":"たべものを つくること","o":"「理」は 王へん＋さと。りょうは ひらがな"},{"k":"会社","y":"かいしゃ","i":"人が あつまって しごとを する ところ","o":"会（あつまる）＋社（しごとば）"},{"k":"科目","y":"かもく","i":"国ご・算数などの べんきょうの しゅるい","o":"「科」は のぎへん＋右に てん二つと十"},{"k":"社会","y":"しゃかい","i":"人が あつまって くらす よのなか","o":"社＋会。どちらも 人が あつまる ところ"},{"k":"社","y":"やしろ","i":"かみさまを まつる ところ","o":"「社」は しめすへん＋土。土の かみさまを まつる"},{"k":"電車","y":"でんしゃ","i":"電気で はしる のりもの","o":"「電」は 雨の 下に 田と しっぽ。かみなり"},{"k":"会わ","y":"あわ","i":"「会う」の かたち。会わない など","o":"会う・会わない。「わ」を わすれない"},{"k":"科学","y":"かがく","i":"しくみを しらべる 学もん","o":"科（しらべる）＋学（まなぶ）"},{"k":"じん社","y":"じんじゃ","i":"かみさまを まつる たてもの","o":"社の よみが「じゃ」に かわる。じんは ひらがな"},{"k":"がっきゅう会","y":"がっきゅうかい","i":"クラスの みんなで はなしあう 会","o":"会だけ かん字。がっきゅうは ひらがな"},{"k":"会い","y":"あい","i":"「会う」の かたち。会いたい など","o":"会う・会いたい。「い」を わすれない"},{"k":"算数","y":"さんすう","i":"数や かたちを 学ぶ かもく","o":"「算」は 竹かんむり＋目＋りょう手"},{"k":"日記","y":"にっき","i":"その日に あった ことを 書く もの","o":"「記」は ごんべん＋おのれ。ことばを 書きのこす"},{"k":"書く","y":"かく","i":"字を ならべて しるす","o":"「書」は ふでの かたちの 下に 日"},{"k":"近道","y":"ちかみち","i":"はやく つく みじかい みち","o":"「近」も「道」も しんにょう。みちの 字"}]},{"id":"k17","term":"2年","label":"第17回","words":[{"k":"週","y":"しゅう","i":"日よう日から 土よう日までの 七日","o":"「週」は しんにょう。ぐるっと まわる 七日"},{"k":"話す","y":"はなす","i":"ことばで 人に つたえる","o":"「話」は ごんべん＋した。したを うごかす"},{"k":"読む","y":"よむ","i":"字を 見て ことばに する","o":"「読」は ごんべん＋「うる」の かたち"},{"k":"通か","y":"つうか","i":"とまらずに とおりすぎる","o":"「通」は しんにょう。かは ひらがな"},{"k":"ほ道","y":"ほどう","i":"人が あるく ための みち","o":"「道」は しんにょう＋「くび」の かたち"},{"k":"手話","y":"しゅわ","i":"手の うごきで 話す ことば","o":"手で 話すから 手話"},{"k":"記す","y":"しるす","i":"書きとめる","o":"「記」は ごんべん＋おのれ。「しるす」と 読む"},{"k":"読書","y":"どくしょ","i":"本を 読むこと","o":"読む＋書（本）。読みが「どく」「しょ」"},{"k":"大通り","y":"おおどおり","i":"町の 大きな みち","o":"大きな 通り。「どおり」と にごる"},{"k":"電話","y":"でんわ","i":"とおくの 人と 話す きかい","o":"電気で 話すから 電話"},{"k":"音読","y":"おんどく","i":"こえに 出して 読むこと","o":"音（こえ）を 出して 読む"},{"k":"近く","y":"ちかく","i":"はなれて いない ところ","o":"「近」は しんにょう＋「おの」の かたち"},{"k":"会話","y":"かいわ","i":"人と 人が 話を すること","o":"会って 話すから 会話"},{"k":"友だち","y":"ともだち","i":"いっしょに あそぶ なかま","o":"「友」は 手と 手を とりあう かたち"},{"k":"書く","y":"かく","i":"字を ならべて しるす","o":"「書」は ふでの かたちの 下に 日"},{"k":"近道","y":"ちかみち","i":"はやく つく みじかい みち","o":"「近」も「道」も しんにょう。みちの 字"},{"k":"書道","y":"しょどう","i":"ふでで 字を 書く ならいごと","o":"書（かく）＋道。ふでで 字を 書く"}]}];
+const KEY = 'kanji-card-2-done-v1';
+
+let done = new Set();
+try{
+  const raw = localStorage.getItem(KEY);
+  if(raw) done = new Set(JSON.parse(raw));
+}catch(e){}
+
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify([...done])); }catch(e){}
+}
+
+let cur = SETS.length ? SETS[SETS.length-1].id : null;
+let filterLeft = false;
+let allShown = false;
+
+const $list = document.getElementById('list');
+const $chips = document.getElementById('chips');
+const $count = document.getElementById('count');
+const $toggleAll = document.getElementById('toggleAll');
+const $fAll = document.getElementById('fAll');
+const $fLeft = document.getElementById('fLeft');
+
+function setOf(id){ return SETS.find(s => s.id === id); }
+function keyOf(setId, kanji, i){ return setId + '|' + i + '|' + kanji; }
+
+function buildChips(){
+  $chips.textContent = '';
+  let lastTerm = null;
+  for(const s of SETS){
+    if(s.term !== lastTerm){
+      const g = document.createElement('span');
+      g.className = 'grp-label';
+      g.textContent = s.term;
+      $chips.appendChild(g);
+      lastTerm = s.term;
+    }
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.textContent = s.label;
+    b.setAttribute('aria-pressed', String(s.id === cur));
+    b.addEventListener('click', () => {
+      cur = s.id;
+      allShown = false;
+      render();
+      const active = $chips.querySelector('[aria-pressed="true"]');
+      if(active) active.scrollIntoView({block:'nearest', inline:'center', behavior:'smooth'});
+    });
+    $chips.appendChild(b);
+  }
+}
+
+function render(){
+  for(const b of $chips.querySelectorAll('.chip')){
+    b.setAttribute('aria-pressed', String(b.textContent === setOf(cur).label));
+  }
+  $fAll.setAttribute('aria-pressed', String(!filterLeft));
+  $fLeft.setAttribute('aria-pressed', String(filterLeft));
+  $toggleAll.textContent = allShown ? 'ぜんぶかくす' : 'ぜんぶ見せる';
+
+  const s = setOf(cur);
+  const words = s.words;
+  const doneCount = words.filter((w,i) => done.has(keyOf(s.id, w.k, i))).length;
+  $count.innerHTML = s.label + ' <b>' + doneCount + '</b> / ' + words.length;
+
+  const shown = words.map((w,i) => ({w, i}))
+    .filter(({w,i}) => !filterLeft || !done.has(keyOf(s.id, w.k, i)));
+
+  $list.textContent = '';
+  if(!shown.length){
+    const d = document.createElement('div');
+    d.className = 'empty';
+    d.textContent = 'この回はぜんぶ「おぼえた」になっています。';
+    $list.appendChild(d);
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  for(const {w,i} of shown){
+    const k = keyOf(s.id, w.k, i);
+    const isDone = done.has(k);
+
+    const card = document.createElement('article');
+    card.className = 'card' + (isDone ? ' is-done' : '');
+
+    const num = document.createElement('div');
+    num.className = 'cnum';
+    num.textContent = String(i+1);
+    card.appendChild(num);
+
+    const body = document.createElement('div');
+    body.className = 'cbody';
+
+    const yomi = document.createElement('div');
+    yomi.className = 'yomi';
+    yomi.textContent = w.y;
+    body.appendChild(yomi);
+
+    const imi = document.createElement('div');
+    imi.className = 'imi';
+    imi.textContent = w.i;
+    body.appendChild(imi);
+
+    const rev = document.createElement('button');
+    rev.type = 'button';
+    rev.className = 'reveal';
+    rev.setAttribute('aria-expanded', String(allShown));
+    rev.setAttribute('aria-label', '漢字を見る');
+    const film = document.createElement('div');
+    film.className = 'film';
+    const kanji = document.createElement('div');
+    kanji.className = 'kanji';
+    kanji.textContent = w.k;
+    const sheet = document.createElement('div');
+    sheet.className = 'sheet';
+    sheet.textContent = 'タップ';
+    film.appendChild(kanji);
+    film.appendChild(sheet);
+    rev.appendChild(film);
+    rev.addEventListener('click', () => {
+      rev.setAttribute('aria-expanded', rev.getAttribute('aria-expanded') === 'true' ? 'false' : 'true');
+    });
+    body.appendChild(rev);
+
+    if(w.o){
+      const ob = document.createElement('div');
+      ob.className = 'oboe';
+      ob.textContent = w.o;
+      body.appendChild(ob);
+    }
+
+    const row = document.createElement('div');
+    row.className = 'crow';
+    const db = document.createElement('button');
+    db.type = 'button';
+    db.className = 'done';
+    db.textContent = 'おぼえた';
+    db.setAttribute('aria-pressed', String(isDone));
+    db.addEventListener('click', () => {
+      if(done.has(k)) done.delete(k); else done.add(k);
+      save();
+      render();
+    });
+    row.appendChild(db);
+    body.appendChild(row);
+
+    card.appendChild(body);
+    frag.appendChild(card);
+  }
+  $list.appendChild(frag);
+}
+
+$toggleAll.addEventListener('click', () => {
+  allShown = !allShown;
+  $toggleAll.textContent = allShown ? 'ぜんぶかくす' : 'ぜんぶ見せる';
+  for(const r of $list.querySelectorAll('.reveal')){
+    r.setAttribute('aria-expanded', String(allShown));
+  }
+});
+$fAll.addEventListener('click', () => { filterLeft = false; render(); });
+$fLeft.addEventListener('click', () => { filterLeft = true; render(); });
+
+const noOboe = SETS.filter(s => !s.words.some(w => w.o)).length;
+document.getElementById('noteOboe').textContent =
+  noOboe ? '青い「覚え方」は、ついている回だけ表示されます。' : '';
+
+buildChips();
+render();
+const active = $chips.querySelector('[aria-pressed="true"]');
+if(active) active.scrollIntoView({block:'nearest', inline:'center'});
+</script>
+
+</body>
+</html>
